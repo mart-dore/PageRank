@@ -1,196 +1,174 @@
-#Projet de big data
-#Auteurs : Augustin MAILLE, Martin DORE
+# Big Data Project
+# Authors: Augustin MAILLE, Martin DORE
 
 import scipy.linalg as nla
-
 import numpy as np
 import pandas as pd
 
-
 #-----------QUESTION 1-------------
 
-def sumColumn(m, column):
+def sum_column(matrix, column):
     total = 0
-    for row in range(m.shape[0]):
-        total += m[row][column]
+    for row in range(matrix.shape[0]):
+        total += matrix[row][column]
     return total
 
-def normalise_column(m):
-    matrice = m.copy()
-    for j in range (matrice.shape[1]):
-        som = sumColumn(matrice, j)
-        if som != 0:
-            for i in range(matrice.shape[0]):
-                elem = matrice[i,j]
-                matrice[i,j] = elem / som
-    return matrice
+def normalize_column(matrix):
+    mat_copy = matrix.copy()
+    for j in range(mat_copy.shape[1]):
+        column_sum = sum_column(mat_copy, j)
+        if column_sum != 0:
+            for i in range(mat_copy.shape[0]):
+                elem = mat_copy[i, j]
+                mat_copy[i, j] = elem / column_sum
+    return mat_copy
 
-#page rank algorithm for a given adjency matric A
-def page_rank(A,beta):
+# PageRank algorithm for a given adjacency matrix A
+def page_rank(A, beta):
     At = np.transpose(A)
-    P = normalise_column(At) #stochastic matrix
+    P = normalize_column(At)  # stochastic matrix
     n = P.shape[0]
     q = np.repeat(1/n, n)
     q_next = np.zeros(n)
-    betaP = beta*P
+    betaP = beta * P
     it = 0
     d = nla.norm(q_next - q)
-    #methode de la puissance
-    while (d > 0.0001):
+    
+    # Power method
+    while d > 0.0001:
         it += 1
-
-
-        q_next = np.dot(betaP,q)
+        q_next = np.dot(betaP, q)
         s = sum(q)
         q_next += np.transpose(np.repeat(((1-beta)/n)*s, n))
-        q_next = q_next/sum(q_next)
+        q_next = q_next / sum(q_next)
         d = nla.norm(q_next - q)
         q = q_next
-    return q_next,it
-
-
+    return q_next, it
 
 #------------QUESTION 2-------------
 
+pages = []  # List of unique pages (each page is a different node)
 
-Sommets = [] #Sommets de l'arborescence des pages (chaque sommet
-#est une page différente)
+# Filling the list of pages
+# Finding all available pages
 
-#--remplissage des sommets--
-#Trouver toutes les pages disponibles
-
-
-
-#--création de la matrice d'adjacence--
-
-def contains_chev(list):
-    try :
-        list.index('<')
+# Function to check if a list contains '<'
+def contains_chevron(lst):
+    try:
+        lst.index('<')
         return True
-    except:
+    except ValueError:
         return False
-#f = open("test.csv", "r")
-#Add paths_unfinished.csv to paths_finished.csv
 
+# Combine paths_finished.csv and paths_unfinished.csv into all_paths.csv
 finished = open("paths_finished.csv", "r")
-unfinished = open("paths_unfinished.csv","r")
-all_paths = open("all_paths.csv","w")
-for l in finished.readlines():
-    all_paths.write(l)
-for li in unfinished.readlines():
-    all_paths.write(li)
+unfinished = open("paths_unfinished.csv", "r")
+all_paths = open("all_paths.csv", "w")
+
+for line in finished.readlines():
+    all_paths.write(line)
+for line in unfinished.readlines():
+    all_paths.write(line)
+
 finished.close()
 unfinished.close()
 all_paths.close()
 
-
+# Process the combined paths
 f = open("all_paths.csv", "r")
 for line in f.readlines():
-    chemin = line.split(";")
-    if (chemin[len(chemin) - 1] == "restart" or "timeout"):
-        del chemin[len(chemin)- 2:len(chemin)] #On enleve le dernier et la target si c'est restart ou timeout
-    #preprocess : on eleve les '<' avec le nombre de pages correspondantes
-    while (contains_chev(chemin) == True):
-         i = chemin.index('<')
-         del chemin[i - 1 : i + 1]
-    for page in chemin:
-        page = page.replace('\n','')#page de fin de ligne
-        try:
-            Sommets.index(page) #on regarde si la page est déjà connue
-        except:
-            Sommets.append(page) #sinon on l'ajoute
-    #remplissage de la matrice d'Adjacence
-nbSommets = len(Sommets)
-Graphe = np.zeros((nbSommets, nbSommets))
-#print(Sommets)
-f.close()
-#f = open("test.csv", "r")
+    path = line.split(";")
+    if path[-1] in ["restart", "timeout"]:
+        del path[-2:]  # Remove the last and target if restart or timeout
 
-f = open("all_paths.csv", "r")
-for line in f.readlines():
-    chemin = line.split(";")
-    if (chemin[len(chemin)-1] == "restart" or "timeout"):
-        del chemin[len(chemin)- 2:len(chemin)] #On enleve le dernier et la target si c'est restart ou timeout
-    #preprocess : on eleve les '<' avec le nombre de pages correspondantes
-    while (contains_chev(chemin) == True):
-         i = chemin.index('<')
-         del chemin[i - 1 : i + 1]
-    for n in range(len(chemin)-1):
-        chemin[n] = chemin[n].replace('\n','')
-        chemin[n + 1] = chemin[n + 1].replace('\n','')
-        index_of_page = Sommets.index(chemin[n])
-        index_of_next = Sommets.index(chemin[n + 1])
-        Graphe[index_of_page][index_of_next] += 1
+    # Preprocess: remove '<' and the associated pages
+    while contains_chevron(path):
+        i = path.index('<')
+        del path[i-1:i+1]
+    
+    for page in path:
+        page = page.replace('\n', '')  # Remove end-of-line characters
+        if page not in pages:
+            pages.append(page)  # Add page if not already in the list
 
 f.close()
 
-#Page la plus visitee
-#print(PG)
-#10 pages les plus visitées avec leur scores
-def dix_plus_vu():
-    dict = two_lists_to_dico(Sommets,PG)
-    dict_sorted = sorted(dict.items(),key = lambda x:x[1],reverse = True)
-    #out = dict(list(dict_sorted.items())[0:10])
-    print(" Les dix premieres pages\n")
+# Create the adjacency matrix
+num_pages = len(pages)
+graph = np.zeros((num_pages, num_pages))
+
+f = open("all_paths.csv", "r")
+for line in f.readlines():
+    path = line.split(";")
+    if path[-1] in ["restart", "timeout"]:
+        del path[-2:]
+
+    while contains_chevron(path):
+        i = path.index('<')
+        del path[i-1:i+1]
+
+    for n in range(len(path) - 1):
+        path[n] = path[n].replace('\n', '')
+        path[n+1] = path[n+1].replace('\n', '')
+        current_page_idx = pages.index(path[n])
+        next_page_idx = pages.index(path[n+1])
+        graph[current_page_idx][next_page_idx] += 1
+
+f.close()
+
+# Function to display the top 10 most visited pages
+def top_ten_pages():
+    page_dict = two_lists_to_dict(pages, PG)
+    sorted_dict = sorted(page_dict.items(), key=lambda x: x[1], reverse=True)
+    print("Top 10 most visited pages:\n")
     for i in range(10):
-        print(dict_sorted[i])
+        print(sorted_dict[i])
 
-def two_lists_to_dico(keys , value):
-    res = dict(zip(keys,value))
-    return res
+# Function to convert two lists into a dictionary
+def two_lists_to_dict(keys, values):
+    return dict(zip(keys, values))
 
-#--------------- page rank perso -------------
-def personalized_page_rank(A,beta,nodes_indexes):#nodes_indexes est la liste des indexs des noeuds à personalisés
+# Personalized PageRank algorithm
+def personalized_page_rank(A, beta, node_indices):  # node_indices are the indexes of personalized nodes
     At = np.transpose(A)
-    P = normalise_column(At) #stochastic matrix
+    P = normalize_column(At)  # stochastic matrix
     n = P.shape[0]
     v = np.zeros(n)
-    for i in nodes_indexes:
-        v[i] = 1/len(nodes_indexes)#On initialize le vecteur v en mettant zero
-        #partout sauf aux noeuds personnalisés où l'on met 1/(nombre de noeud perso)
+    for i in node_indices:
+        v[i] = 1 / len(node_indices)  # Initialize v with 0 everywhere except personalized nodes
     q = np.repeat(1/n, n)
     q_next = np.zeros(n)
-    betaP = beta*P
+    betaP = beta * P
     it = 0
     d = nla.norm(q_next - q)
-    #methode de la puissance
-    while (d > 0.0001):
+
+    # Power method
+    while d > 0.0001:
         it += 1
-
-
-        q_next = np.dot(betaP,q)
+        q_next = np.dot(betaP, q)
         s = sum(q)
-        q_next += np.transpose(np.repeat(((1-beta))*s, n)*v)
-        q_next = q_next/sum(q_next)
+        q_next += np.transpose(np.repeat((1-beta)*s, n) * v)
+        q_next = q_next / sum(q_next)
         d = nla.norm(q_next - q)
         q = q_next
-    return q_next,it
+    return q_next, it
 
-#--------Q6 Choisir un ensemble de noeud à perso et comparer avec pr
-# teste différents noeuds et compare.
+# Function to get node indices from names
+def get_indices_from_names(names):
+    return [pages.index(name) for name in names]
 
-
-#------- Code pour transformer ce fichier en veritable programme
-
-
-def get_index_w_name(names):
-    list_indexes = []
-    for name in names:
-        list_indexes.append(Sommets.index(name))
-    return list_indexes
-
-q1 = input("Que voulez vous faire ?\n Répondre par le numero de la réponse.\n1. Calcul de Page Rank\n2. Calcul de page rank personalisé\n")
-if (int(q1) == 1):
-    B = float(input("Veuillez choisir une valeur de beta (Valeur entre 0 et 1)\n"))
-    print("Calcul en cour\n")
-    PG,n_iter = page_rank(Graphe, B)
-    print("Nombre d'itération : "+str(n_iter)+"\n")
-    dix_plus_vu()
-if (int(q1) == 2):
-    noms = input("Donnez le nom des noeuds à personalisé, il doivent être exact et séparés par un espace\n")
-    list_of_names = noms.split(" ")
-    B = float(input("Veuillez choisir une valeur de beta (Valeur entre 0 et 1)\n"))
-    print("Calcul en cour\n")
-    PG, n_iter = personalized_page_rank(Graphe,B,get_index_w_name(list_of_names))
-    print("Nombre d'itération : "+str(n_iter)+"\n")
-    dix_plus_vu()
+# Main program
+choice = input("What would you like to do?\n1. Calculate PageRank\n2. Calculate personalized PageRank\n")
+if int(choice) == 1:
+    B = float(input("Please select a beta value (between 0 and 1):\n"))
+    print("Calculating...\n")
+    PG, n_iter = page_rank(graph, B)
+    print(f"Number of iterations: {n_iter}\n")
+    top_ten_pages()
+elif int(choice) == 2:
+    node_names = input("Enter the exact names of the nodes to personalize, separated by spaces:\n").split()
+    B = float(input("Please select a beta value (between 0 and 1):\n"))
+    print("Calculating...\n")
+    PG, n_iter = personalized_page_rank(graph, B, get_indices_from_names(node_names))
+    print(f"Number of iterations: {n_iter}\n")
+    top_ten_pages()
